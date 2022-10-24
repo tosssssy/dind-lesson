@@ -1,0 +1,67 @@
+# version: "3.3"
+# services:
+#   dockerd:
+#     image: docker:dind
+#     privileged: true
+#     volumes:
+#       - ./curriculums:/curriculums
+#       - dind-certs-client:/certs/client
+#       - ./wait-for-dockerd.sh:/wait-for-dockerd.sh
+#     command:
+#       - /wait-for-dockerd.sh
+#       - docker-compose -f /curriculums/sample-curriculum/docker-compose.yml up -d
+
+#   compose:
+#     image: docker/compose:alpine-1.29.2
+#     depends_on:
+#       - dockerd
+#     environment:
+#       - DOCKER_HOST=tcp://docker:2375
+#       - DOCKER_TLS_VERIFY=1
+#       - DOCKER_CERT_PATH=/certs/client
+#     volumes:
+#       - ./curriculums:/curriculums
+#       - dind-certs-client:/certs/client
+#     links:
+#       - dockerd:docker
+#     # command:
+#     #   # dockerd の起動を多少待つ
+#     #   - /bin/sh
+#     #   - -c
+#     #   - |
+#     #     sleep 3
+#     #     docker-compose -f /curriculums/sample-curriculum/docker-compose.yml up -d
+#     tty: true
+#     command: /bin/sh
+
+# volumes:
+#   dind-certs-client:
+
+version: "3.3"
+
+services:
+  dockerd:
+    image: docker:20-dind
+    privileged: true
+    volumes:
+      - dind-certs-client:/certs/client
+      - dind-data:/var/lib/docker
+      - ./curriculums:/curriculums
+    ports:
+      - 80:80
+
+  compose:
+    image: docker/compose:latest
+    environment:
+      - DOCKER_HOST=tcp://docker:2376
+      - DOCKER_TLS_VERIFY=1
+      - DOCKER_CERT_PATH=/certs/client
+    volumes:
+      - dind-certs-client:/certs/client
+      - ./curriculums:/curriculums
+    links:
+      - dockerd:docker # dind の TLS 証明書の SAN に該当するようにエイリアス設定
+    command: docker-compose -f /curriculums/sample-curriculum/docker-compose.yml --env-file /curriculums/sample-curriculum/.env up -d
+volumes:
+  dind-data:
+  dind-certs-client:
